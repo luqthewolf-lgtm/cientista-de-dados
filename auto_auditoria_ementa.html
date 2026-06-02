@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auto-auditoria | Cientista de Dados</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0f14; --bg2:#0e141b; --surf:#121a23; --surf2:#162230;
+  --line:#1f2c3a; --line2:#2b3d50;
+  --txt:#e7eef6; --mut:#8aa0b6; --mut2:#5f7d99;
+  --amber:#f2a23c; --teal:#4fb9c4;
+  --l1:#f0584f; --l1b:rgba(240,88,79,.16);   /* nao sei  */
+  --l2:#f2a23c; --l2b:rgba(242,162,60,.16);   /* inseguro */
+  --l3:#b9c44f; --l3b:rgba(185,196,79,.16);   /* razoavel */
+  --l4:#36c46b; --l4b:rgba(54,196,107,.16);   /* domino   */
+  --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans',sans-serif; --disp:'Fraunces',serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:var(--sans); color:var(--txt); background:var(--bg); line-height:1.5;
+  background-image:
+    radial-gradient(900px 500px at 85% -8%, rgba(242,162,60,.10), transparent 60%),
+    radial-gradient(700px 500px at -5% 105%, rgba(79,185,196,.08), transparent 55%),
+    linear-gradient(transparent 0 31px, rgba(255,255,255,.016) 31px 32px),
+    linear-gradient(90deg, transparent 0 31px, rgba(255,255,255,.016) 31px 32px);
+  background-size:auto,auto,32px 32px,32px 32px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:880px; margin:0 auto; padding:30px 20px 120px;}
+.kicker{font-family:var(--mono); font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:var(--amber); display:flex; align-items:center; gap:10px;}
+.kicker::before{content:""; width:26px; height:1px; background:var(--amber); display:inline-block;}
+h1{font-family:var(--disp); font-weight:600; font-size:clamp(32px,6vw,52px); line-height:1.03; letter-spacing:-.02em; margin:14px 0 0;}
+h1 em{font-style:italic; color:var(--amber);}
+.lead{color:var(--mut); font-size:16.5px; margin-top:15px; max-width:66ch;}
+
+/* scale legend */
+.legend{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:24px;}
+@media(max-width:680px){.legend{grid-template-columns:repeat(2,1fr)}}
+.lg{border:1px solid var(--line2); border-radius:11px; padding:12px 13px; font-size:13px; color:var(--mut);}
+.lg b{display:block; font-family:var(--mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:3px;}
+.lg.n1{border-left:3px solid var(--l1)} .lg.n1 b{color:var(--l1)}
+.lg.n2{border-left:3px solid var(--l2)} .lg.n2 b{color:var(--l2)}
+.lg.n3{border-left:3px solid var(--l3)} .lg.n3 b{color:var(--l3)}
+.lg.n4{border-left:3px solid var(--l4)} .lg.n4 b{color:var(--l4)}
+
+/* sticky summary */
+.summary{position:sticky; top:0; z-index:20; margin:26px 0 8px; padding:14px 16px;
+  background:rgba(11,15,20,.82); backdrop-filter:blur(10px);
+  border:1px solid var(--line2); border-radius:14px;}
+.sumtop{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;}
+.fillbar{flex:1; min-width:160px;}
+.fillbar .t{font-family:var(--mono); font-size:11.5px; color:var(--mut); letter-spacing:.06em; margin-bottom:6px; display:flex; justify-content:space-between;}
+.bar{height:8px; background:var(--surf2); border-radius:6px; overflow:hidden; border:1px solid var(--line); display:flex;}
+.bar>span{height:100%; transition:width .3s;}
+.bar .s1{background:var(--l1)} .bar .s2{background:var(--l2)} .bar .s3{background:var(--l3)} .bar .s4{background:var(--l4)}
+.counts{display:flex; gap:14px; font-family:var(--mono); font-size:13px; flex-wrap:wrap;}
+.counts .c{display:flex; align-items:center; gap:6px; color:var(--mut)}
+.counts .dot{width:9px; height:9px; border-radius:3px; display:inline-block}
+.counts .c1 .dot{background:var(--l1)} .counts .c2 .dot{background:var(--l2)} .counts .c3 .dot{background:var(--l3)} .counts .c4 .dot{background:var(--l4)}
+.counts b{color:var(--txt)}
+
+/* sections */
+.sec{margin-top:30px;}
+.sechead{font-family:var(--disp); font-weight:600; font-size:23px; letter-spacing:-.01em; display:flex; align-items:baseline; gap:12px; margin-bottom:4px;}
+.sechead .ix{font-family:var(--mono); font-size:13px; color:var(--amber); font-weight:500;}
+.sechead .frac{margin-left:auto; font-family:var(--mono); font-size:12px; color:var(--mut); font-weight:400;}
+.secline{height:1px; background:var(--line); margin:10px 0 14px;}
+
+.topic{display:grid; grid-template-columns:1fr auto; gap:14px; align-items:center; padding:11px 14px; border:1px solid var(--line); background:var(--surf); border-radius:12px; margin-bottom:9px; transition:.15s;}
+.topic.done{border-color:var(--line2)}
+.topic .name{font-size:15px}
+.topic .name .stat{font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; margin-left:9px; opacity:.85;}
+.seg{display:flex; gap:6px;}
+.seg button{font-family:var(--mono); font-size:11px; letter-spacing:.04em; text-transform:uppercase; cursor:pointer; border:1px solid var(--line2); background:var(--surf2); color:var(--mut); padding:8px 10px; border-radius:8px; transition:.13s; white-space:nowrap;}
+.seg button:hover{color:var(--txt); border-color:var(--mut)}
+.seg button.on1{background:var(--l1b); border-color:var(--l1); color:var(--l1)}
+.seg button.on2{background:var(--l2b); border-color:var(--l2); color:var(--l2)}
+.seg button.on3{background:var(--l3b); border-color:var(--l3); color:var(--l3)}
+.seg button.on4{background:var(--l4b); border-color:var(--l4); color:var(--l4)}
+@media(max-width:680px){
+  .topic{grid-template-columns:1fr}
+  .seg{justify-content:space-between}
+  .seg button{flex:1; padding:9px 4px}
+}
+
+/* report */
+.reportbar{position:fixed; left:0; right:0; bottom:0; z-index:30; background:rgba(11,15,20,.9); backdrop-filter:blur(12px); border-top:1px solid var(--line2); padding:13px 20px;}
+.reportbar .inner{max-width:880px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;}
+.reportbar .hint{font-size:13px; color:var(--mut)}
+.btn{font-family:var(--mono); font-size:13px; letter-spacing:.06em; border:1px solid var(--line2); background:var(--surf2); color:var(--txt); padding:11px 18px; border-radius:9px; cursor:pointer; transition:.15s; text-transform:uppercase;}
+.btn:hover{border-color:var(--amber); color:var(--amber)}
+.btn.primary{background:var(--amber); color:#1a1206; border-color:var(--amber); font-weight:600;}
+.btn.primary:hover{background:#ffb44e}
+
+.modal{position:fixed; inset:0; z-index:50; background:rgba(4,7,10,.7); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; padding:20px;}
+.modal.show{display:flex}
+.sheet{background:linear-gradient(180deg,var(--surf),var(--bg2)); border:1px solid var(--line2); border-radius:16px; width:min(720px,100%); max-height:86vh; display:flex; flex-direction:column; overflow:hidden;}
+.sheet h2{font-family:var(--disp); font-weight:600; font-size:24px; padding:20px 22px 4px;}
+.sheet p{color:var(--mut); font-size:14px; padding:0 22px 12px;}
+.sheet textarea{font-family:var(--mono); font-size:12.5px; line-height:1.55; color:var(--txt); background:#0a0e13; border:1px solid var(--line2); border-radius:10px; margin:0 22px; padding:14px; resize:vertical; min-height:240px; flex:1;}
+.sheet .acts{display:flex; gap:10px; justify-content:flex-end; padding:16px 22px;}
+.copied{color:var(--l4); font-family:var(--mono); font-size:12px; align-self:center; margin-right:auto; opacity:0; transition:.2s}
+.copied.show{opacity:1}
+.foot{margin-top:36px; text-align:center; color:var(--mut); font-family:var(--mono); font-size:12px; letter-spacing:.05em;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">Processo Seletivo &middot; Cientista de Dados</div>
+  <h1>Auto-auditoria <em>da ementa</em></h1>
+  <p class="lead">Marque, para cada tema, o quanto voce se sente firme &mdash; do "do zero" ao "domino e explico na sabatina". No fim, gere um relatorio e me mande: eu preparo um material novo focado exatamente onde voce esta inseguro, sem perder tempo no que ja domina.</p>
+
+  <div class="legend">
+    <div class="lg n1"><b>Do zero</b>Nunca estudei ou nao saberia comecar.</div>
+    <div class="lg n2"><b>Inseguro</b>Ja vi, mas nao confio. Preciso revisar bastante.</div>
+    <div class="lg n3"><b>Razoavel</b>Sei o basico, resolvo com algum esforco.</div>
+    <div class="lg n4"><b>Domino</b>Explico e codifico de cabeca.</div>
+  </div>
+
+  <div class="summary">
+    <div class="sumtop">
+      <div class="fillbar">
+        <div class="t"><span>Preenchido</span><span id="fillTxt">0 / 0</span></div>
+        <div class="bar" id="fillBar"><span class="s1"></span><span class="s2"></span><span class="s3"></span><span class="s4"></span></div>
+      </div>
+      <div class="counts">
+        <span class="c c1"><span class="dot"></span><b id="n1">0</b> do zero</span>
+        <span class="c c2"><span class="dot"></span><b id="n2">0</b> inseguro</span>
+        <span class="c c3"><span class="dot"></span><b id="n3">0</b> razoavel</span>
+        <span class="c c4"><span class="dot"></span><b id="n4">0</b> domino</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="sections"></div>
+
+  <div class="foot">Preencha e clique em "Gerar relatorio" antes de fechar a pagina &mdash; as marcacoes nao ficam salvas ao recarregar.</div>
+</div>
+
+<!-- report bar -->
+<div class="reportbar">
+  <div class="inner">
+    <span class="hint" id="barHint">Marque os temas e gere o relatorio para me enviar.</span>
+    <button class="btn primary" onclick="openReport()">Gerar relatorio &rarr;</button>
+  </div>
+</div>
+
+<!-- modal -->
+<div class="modal" id="modal">
+  <div class="sheet">
+    <h2>Seu relatorio</h2>
+    <p>Copie o texto abaixo e cole na nossa conversa. Vou ler os niveis e montar um material novo priorizando seus pontos fracos.</p>
+    <textarea id="reportText" readonly></textarea>
+    <div class="acts">
+      <span class="copied" id="copiedMsg">copiado!</span>
+      <button class="btn" onclick="closeReport()">Fechar</button>
+      <button class="btn primary" onclick="copyReport()">Copiar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const EMENTA = [["Programacao (Python)", ["Fluencia na sintaxe basica e estruturas", "Leitura e escrita de dados (pandas I/O)", "Principais pacotes de ML (sklearn) de cabeca"]], ["Estatistica Basica", ["Variaveis aleatorias continuas e discretas", "Funcao densidade (PDF) e distribuicao acumulada (CDF)", "Medidas-resumo: media, mediana, quartis, moda, variancia", "Testes de hipoteses (H0/H1, p-valor)", "Distribuicoes: Normal, Bernoulli, Binomial", "Distribuicoes: Uniforme, Poisson, Geometrica"]], ["Algebra Linear", ["Vetores e matrizes", "Algebra matricial (multiplicacao, inversa, determinante)", "Distancias e produto interno"]], ["Avaliacao de Modelos", ["KS e Gini (credit scoring)", "AUC e curva ROC", "RMSE, MAE e R2 (regressao)", "Precision, Recall, F1 e matriz de confusao", "Validacao: holdout, k-fold, leave-one-out", "Validacao: out-of-sample e out-of-time"]], ["Data Prep", ["Tratamento de missings", "Tratamento de outliers", "Categorizacao / binning de variaveis", "PCA (reducao de dimensionalidade)", "Correlacao e associacao (continuas e categoricas)", "Selecao de variaveis"]], ["Classificacao", ["Arvore de classificacao", "Random Forest", "Boosting (Gradient Boosting, AdaBoost)", "Regressao logistica", "KNN", "Naive Bayes (Gaussiano x Bernoulli)", "SVM", "Redes neurais (conceito)"]], ["Regressao", ["Regressao linear (OLS)", "Regularizacao L1 e L2 (Lasso / Ridge)", "Arvore de regressao", "Analise de residuos", "GLM (modelos lineares generalizados)"]], ["Agrupamento", ["K-means / K-medoids", "DBSCAN", "Clustering hierarquico (dendrograma)", "Escolha de K (cotovelo, silhueta)", "GMM (Gaussian Mixture Models)"]], ["Banco de Dados", ["Modelo relacional e chaves (PK / FK)", "Sintaxe SQL (SELECT, WHERE, ORDER BY)", "JOINs e GROUP BY"]], ["IA Generativa", ["Fundamentos de IA Generativa e NLP", "Arquitetura Transformer e attention", "Embeddings e bancos vetoriais", "RAG (retrieval-augmented generation)", "In-Context Learning e engenharia de prompt", "Tecnicas de treinamento e fine-tuning", "Quantization", "RLHF", "Safeguards e Guardrails"]], ["Pesquisa Operacional", ["Programacao Linear (mix, mistura, transporte)", "Solucao grafica e Simplex", "Programacao Inteira e Branch-and-Bound", "MIP (GAP, Best Bound, Solvers)"]]];
+const LEVELS = {1:'Do zero',2:'Inseguro',3:'Razoavel',4:'Domino'};
+const state = {};   // key "s-t" -> level 1..4
+let TOTAL = 0;
+
+function build(){
+  const root=document.getElementById('sections');
+  let html='';
+  EMENTA.forEach((sec,si)=>{
+    const [name,topics]=sec;
+    const ix=String(si+1).padStart(2,'0');
+    html+=`<div class="sec" data-sec="${si}">
+      <div class="sechead"><span class="ix">${ix}</span>${name}<span class="frac" id="frac-${si}">0/${topics.length}</span></div>
+      <div class="secline"></div>`;
+    topics.forEach((t,ti)=>{
+      TOTAL++;
+      const key=`${si}-${ti}`;
+      html+=`<div class="topic" id="t-${key}">
+        <div class="name">${t}<span class="stat" id="stat-${key}"></span></div>
+        <div class="seg">
+          <button onclick="setLvl('${key}',1,${si})">Do zero</button>
+          <button onclick="setLvl('${key}',2,${si})">Inseguro</button>
+          <button onclick="setLvl('${key}',3,${si})">Razoavel</button>
+          <button onclick="setLvl('${key}',4,${si})">Domino</button>
+        </div>
+      </div>`;
+    });
+    html+=`</div>`;
+  });
+  root.innerHTML=html;
+  document.getElementById('fillTxt').textContent=`0 / ${TOTAL}`;
+}
+
+function setLvl(key,lvl,si){
+  state[key]=lvl;
+  const topic=document.getElementById('t-'+key);
+  const btns=topic.querySelectorAll('.seg button');
+  btns.forEach((b,i)=>{
+    b.className='';
+    if(i+1===lvl) b.classList.add('on'+lvl);
+  });
+  topic.classList.add('done');
+  const colors={1:'var(--l1)',2:'var(--l2)',3:'var(--l3)',4:'var(--l4)'};
+  const stat=document.getElementById('stat-'+key);
+  stat.textContent=LEVELS[lvl];
+  stat.style.color=colors[lvl];
+  refresh(si);
+}
+
+function refresh(si){
+  const c={1:0,2:0,3:0,4:0};
+  let filled=0;
+  for(const k in state){ c[state[k]]++; filled++; }
+  document.getElementById('n1').textContent=c[1];
+  document.getElementById('n2').textContent=c[2];
+  document.getElementById('n3').textContent=c[3];
+  document.getElementById('n4').textContent=c[4];
+  document.getElementById('fillTxt').textContent=`${filled} / ${TOTAL}`;
+  const bar=document.getElementById('fillBar');
+  bar.querySelector('.s1').style.width=(c[1]/TOTAL*100)+'%';
+  bar.querySelector('.s2').style.width=(c[2]/TOTAL*100)+'%';
+  bar.querySelector('.s3').style.width=(c[3]/TOTAL*100)+'%';
+  bar.querySelector('.s4').style.width=(c[4]/TOTAL*100)+'%';
+  // fracao da secao
+  if(si!==undefined){
+    const topics=EMENTA[si][1];
+    let f=0; topics.forEach((_,ti)=>{ if(state[`${si}-${ti}`]) f++; });
+    document.getElementById('frac-'+si).textContent=`${f}/${topics.length}`;
+  }
+  const hint=document.getElementById('barHint');
+  if(filled<TOTAL) hint.textContent=`Faltam ${TOTAL-filled} temas para marcar.`;
+  else hint.textContent='Tudo marcado! Gere o relatorio e me envie.';
+}
+
+function buildReport(){
+  const c={1:[],2:[],3:[],4:[]};
+  const bySec=[];
+  let filled=0;
+  EMENTA.forEach((sec,si)=>{
+    const [name,topics]=sec;
+    const rows=[];
+    topics.forEach((t,ti)=>{
+      const lvl=state[`${si}-${ti}`];
+      if(lvl){ filled++; c[lvl].push(`${t} (${name})`); rows.push(`- [${LEVELS[lvl]}] ${t}`); }
+      else rows.push(`- [nao marcado] ${t}`);
+    });
+    bySec.push(`### ${name}\n`+rows.join('\n'));
+  });
+
+  let txt = `# Auto-auditoria — Prova Cientista de Dados (Itau)\n\n`;
+  txt += `Preenchido: ${filled}/${TOTAL} temas\n`;
+  txt += `Domino: ${c[4].length} | Razoavel: ${c[3].length} | Inseguro: ${c[2].length} | Do zero: ${c[1].length}\n\n`;
+
+  txt += `## PRIORIDADE MAXIMA — comecar do zero\n`;
+  txt += (c[1].length? c[1].map(x=>`- ${x}`).join('\n') : '- (nenhum)') + '\n\n';
+  txt += `## REVISAR COM CUIDADO — inseguro\n`;
+  txt += (c[2].length? c[2].map(x=>`- ${x}`).join('\n') : '- (nenhum)') + '\n\n';
+  txt += `## REFORCO LEVE — razoavel\n`;
+  txt += (c[3].length? c[3].map(x=>`- ${x}`).join('\n') : '- (nenhum)') + '\n\n';
+  txt += `## JA DOMINO (so manutencao)\n`;
+  txt += (c[4].length? c[4].map(x=>`- ${x}`).join('\n') : '- (nenhum)') + '\n\n';
+
+  txt += `---\n## Detalhe por secao\n` + bySec.join('\n\n') + '\n\n';
+  txt += `Claude: por favor, monte um material novo priorizando "comecar do zero" e "inseguro", no formato de capitulo (situacao -> intuicao -> matematica -> codigo -> resposta de sabatina).`;
+  return txt;
+}
+
+function openReport(){
+  document.getElementById('reportText').value=buildReport();
+  document.getElementById('modal').classList.add('show');
+}
+function closeReport(){ document.getElementById('modal').classList.remove('show'); }
+function copyReport(){
+  const ta=document.getElementById('reportText');
+  ta.select(); ta.setSelectionRange(0,99999);
+  const done=()=>{ const m=document.getElementById('copiedMsg'); m.classList.add('show'); setTimeout(()=>m.classList.remove('show'),1800); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).then(done,()=>{document.execCommand('copy'); done();});
+  } else { document.execCommand('copy'); done(); }
+}
+document.getElementById('modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeReport(); });
+
+build();
+</script>
+</body>
+</html>
